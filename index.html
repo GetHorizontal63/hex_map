@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e9e5df">
+  <title>Census Hex Map</title>
+  <meta name="description" content="Interactive 3D hexagon maps of U.S. Census data: population density, income, home values, poverty, race and ethnicity, down to the county.">
+  <link rel="icon" href="assets/nomad-data-logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+      "d3-geo": "https://cdn.jsdelivr.net/npm/d3-geo@3.1.1/+esm",
+      "topojson-client": "https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/+esm",
+      "gifenc": "https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="stage">
+    <canvas id="map"></canvas>
+    <div id="labels"></div>
+
+    <header id="titleBlock">
+      <h1 id="title">United States</h1>
+      <div id="subtitle">Population Density</div>
+    </header>
+
+    <section id="legend">
+      <div id="legendTitle">People per sq mi</div>
+      <div id="legendSwatches"></div>
+    </section>
+
+    <div id="stamp"></div>
+    <canvas id="tlChart" aria-label="Running total and trailing three-week count over time"></canvas>
+    <footer id="source"><div id="sourceText"></div><div id="sourceNote"></div></footer>
+    <div id="credit"><img src="assets/nomad-data-logo.png" alt="NOMAD Data"><span>NOMAD DATA</span></div>
+  </div>
+
+  <div id="tooltip" hidden></div>
+
+  <button id="themeToggle" title="Switch to dark mode" aria-label="Switch between light and dark mode">
+    <svg class="moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
+    <svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+  </button>
+  <button id="panelToggle" title="Show / hide controls (H)" aria-label="Toggle controls">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+
+  <aside id="panel">
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="map" class="on">Map</button>
+      <button role="tab" data-tab="style">Style</button>
+      <button role="tab" data-tab="export">Export</button>
+    </nav>
+    <div class="panel-scroll">
+
+      <!-- MAP: what to show, and where -->
+      <div class="pane" data-pane="map">
+        <section>
+          <h2>Show</h2>
+          <div class="seg" id="sourceMode">
+            <button data-v="census" class="on">Static</button><button data-v="elections">Elections</button><button data-v="time">Over time</button><button data-v="custom">My data</button>
+          </div>
+
+          <div class="src" data-src="census">
+            <label class="field"><span>Measure</span><select id="metric"></select></label>
+            <details class="more">
+              <summary>More options</summary>
+              <label class="field"><span>Column height</span><select id="heightMetric"></select></label>
+              <div class="field"><span>Color scale</span>
+                <div class="seg small" id="domainMode">
+                  <button data-v="focus" class="on">Fit to area</button><button data-v="national">National</button>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="src" data-src="elections" hidden>
+            <label class="field"><span>Race</span><select id="elRace"></select></label>
+            <label class="field"><span>Year</span><select id="elYear"></select></label>
+            <label class="field"><span>Column height</span><select id="elHeight"><option value="votes">Votes cast</option><option value="flat">Flat</option></select></label>
+            <p class="hint" id="elHint"></p>
+          </div>
+
+          <div class="src" data-src="time" hidden>
+            <label class="field"><span>Timeline</span><select id="timelineSel"></select></label>
+            <p class="hint" id="timelineHint">Play, scrub and export a GIF from the bar under the map.</p>
+          </div>
+
+          <div class="src" data-src="custom" hidden>
+            <button id="customOpen" class="btn wide">Load a CSV...</button>
+            <p class="hint" id="customEmpty">Points with latitude, longitude and a category. The file stays in your browser.</p>
+            <p class="hint"><a class="tpl" href="assets/custom-data-template.csv" download>Download a template CSV</a></p>
+            <div id="customBox" hidden>
+              <div class="custom-head"><b id="customName"></b><button id="customRemove" title="Remove custom data">Remove</button></div>
+              <label class="field"><span>Color by</span><select id="cColor"></select></label>
+              <label class="field" id="cAggRow"><span>Combine values in a hex</span><select id="cAgg"><option value="mean">Average</option><option value="sum">Total</option></select></label>
+              <label class="field"><span>Column height</span><select id="cHeight"></select></label>
+              <label class="field" id="cFilterRow"><span id="cFilterLabel">Only</span><select id="cFilter"></select></label>
+              <p class="hint" id="customNote"></p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2>Area</h2>
+          <div class="seg" id="focusMode">
+            <button data-v="nation" class="on">Nation</button><button data-v="states">States</button><button data-v="counties">Counties</button>
+          </div>
+          <div class="search">
+            <input id="search" type="search" placeholder="Search states..." autocomplete="off">
+            <ul id="suggest" hidden></ul>
+          </div>
+          <div id="chips"></div>
+          <p class="hint" id="focusHint">Click the map to focus a state.</p>
+          <details class="more">
+            <summary>More options</summary>
+            <label class="field" id="groupRow"><span>Region preset</span><select id="stateGroup"><option value="">Choose a region...</option></select></label>
+            <label class="toggle"><input type="checkbox" id="hideOthers" checked><span>Hide areas outside the focus</span></label>
+          </details>
+          <div class="row-buttons">
+            <button id="fitView">Re-center</button><button id="clearFocus">Reset area</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- STYLE: how it looks -->
+      <div class="pane" data-pane="style" hidden>
+        <section>
+          <h2>Colors</h2>
+          <div id="palettes"></div>
+          <label class="toggle"><input type="checkbox" id="invertColors"><span>Invert colors</span></label>
+          <details class="more">
+            <summary>Custom colors</summary>
+            <div class="colors">
+              <label title="Zero / no data"><input type="color" data-ci="0"><span>None</span></label>
+              <label><input type="color" data-ci="1"><span>Low</span></label>
+              <label><input type="color" data-ci="2"><span>&nbsp;</span></label>
+              <label><input type="color" data-ci="3"><span>&nbsp;</span></label>
+              <label><input type="color" data-ci="4"><span>High</span></label>
+              <label title="Background"><input type="color" id="bgColor"><span>Paper</span></label>
+              <label title="Text"><input type="color" id="inkColor"><span>Text</span></label>
+            </div>
+          </details>
+        </section>
+
+        <section>
+          <h2>Hexagons</h2>
+          <label class="field slider"><span>Size <b id="sizeOut"></b></span><input type="range" id="tileSize" min="0" max="100" step="1"></label>
+          <label class="toggle"><input type="checkbox" id="autoSize" checked><span>Size automatically for the area</span></label>
+          <p class="hint" id="hexCount"></p>
+          <label class="field slider"><span>Column height <b id="exagOut"></b></span><input type="range" id="exag" min="0" max="3" step="0.05"></label>
+          <details class="more">
+            <summary>More options</summary>
+            <label class="field slider"><span>Gap between hexes <b id="gapOut"></b></span><input type="range" id="gap" min="0" max="0.3" step="0.01"></label>
+            <label class="field slider"><span>Animation speed <b id="durOut"></b></span><input type="range" id="duration" min="0" max="4000" step="100"></label>
+          </details>
+        </section>
+
+        <section>
+          <h2>Light</h2>
+          <label class="field slider"><span>Sun direction <b id="sunAzOut"></b></span><input type="range" id="sunAz" min="0" max="359" step="1"></label>
+          <label class="field slider"><span>Sun height <b id="sunElOut"></b></span><input type="range" id="sunEl" min="10" max="80" step="1"></label>
+          <label class="field slider" title="Softens shadow edges and adds sky light, like an overcast day"><span>Shadow softness <b id="diffOut"></b></span><input type="range" id="sunDiff" min="0" max="1" step="0.05"></label>
+        </section>
+
+        <section>
+          <h2>Text</h2>
+          <label class="field"><span>Title</span><input type="text" id="titleOverride" placeholder="Automatic"></label>
+          <label class="toggle"><input type="checkbox" id="showLabels" checked><span>City labels</span></label>
+          <label class="field slider" id="labelCountRow"><span>Number of cities <b id="labelOut"></b></span><input type="range" id="labelCount" min="1" max="25" step="1"></label>
+        </section>
+      </div>
+
+      <!-- EXPORT -->
+      <div class="pane" data-pane="export" hidden>
+        <section>
+          <h2>Image</h2>
+          <button id="savePng" class="btn wide primary">Export posters (PNG)...</button>
+          <p class="hint">Six shapes, from square to widescreen. Each can be re-framed before you download it.</p>
+        </section>
+        <section>
+          <h2>Animation</h2>
+          <button id="exportGif" class="btn wide">Export animation (GIF)...</button>
+          <p class="hint" id="exportGifHint">Choose <b>Over time</b> on the Map tab to animate a timeline.</p>
+        </section>
+        <section>
+          <h2>Share</h2>
+          <button id="copyLink" class="btn wide">Copy link to this view</button>
+          <p class="hint">Hover a hex for its value &middot; <kbd>H</kbd> hides this panel &middot; <kbd>F</kbd> re-centers the map &middot; <kbd>Space</kbd> plays a timeline.</p>
+        </section>
+      </div>
+    </div>
+  </aside>
+
+  <div id="timebar" hidden>
+    <button id="tlPlay" class="tl-play" aria-label="Play">▶</button>
+    <div class="tl-track">
+      <input type="range" id="tlScrub" min="0" max="1" step="1" value="0" aria-label="Timeline position">
+      <div class="tl-ends"><span id="tlStart"></span><span id="tlLabel" class="tl-label"></span><span id="tlEnd"></span></div>
+    </div>
+    <select id="tlSpeed" aria-label="Playback speed">
+      <option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+    </select>
+    <button id="tlGif" class="xbtn">GIF…</button>
+    <button id="tlClose" class="xclose" aria-label="Close timeline">×</button>
+  </div>
+
+  <div id="gifModal" hidden>
+    <div class="xmodal gifm" role="dialog" aria-modal="true" aria-labelledby="gifHeading">
+      <header>
+        <h2 id="gifHeading">Export GIF</h2>
+        <button id="gifClose" class="xclose" aria-label="Close">×</button>
+      </header>
+      <div class="gif-opts">
+        <label>Ratio <select id="gifRatio"></select></label>
+        <label>Long edge <select id="gifSize"><option value="480">480 px</option><option value="720" selected>720 px</option><option value="1080">1080 px</option></select></label>
+        <label>Frames <select id="gifStep"></select></label>
+        <label>Speed <select id="gifDelay"><option value="60">Fast</option><option value="100" selected>Normal</option><option value="180">Slow</option></select></label>
+        <button id="gifAdjust" class="xbtn ghost">Adjust framing…</button>
+        <button id="gifGo" class="xbtn">Render GIF</button>
+      </div>
+      <div class="gif-progress"><div id="gifBar"></div></div>
+      <p id="gifStatus" class="hint"></p>
+      <div class="gif-preview"><img id="gifImg" alt="Animated map preview" hidden><a id="gifDl" class="xbtn" hidden>Download GIF</a></div>
+    </div>
+  </div>
+
+  <div id="editModal" hidden>
+    <div class="xmodal editm" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+      <header>
+        <h2 id="editTitle">Adjust framing</h2>
+        <button id="editReset" class="xbtn ghost">Reset</button>
+        <button id="editCancel" class="xbtn ghost">Cancel</button>
+        <button id="editDone" class="xbtn">Done</button>
+      </header>
+      <p class="hint">Drag to rotate · right-drag or Shift-drag to pan · scroll to zoom · drag the legend or chart to move it.</p>
+      <div id="editStage"><canvas id="editCanvas"></canvas></div>
+    </div>
+  </div>
+
+  <div id="customModal" hidden>
+    <div class="xmodal customm" role="dialog" aria-modal="true" aria-labelledby="customHeading">
+      <header>
+        <h2 id="customHeading">Load custom data</h2>
+        <button id="customClose" class="xclose" aria-label="Close">×</button>
+      </header>
+      <p class="hint">A CSV with one row per point. Required: latitude, longitude and category 1. Optional: category 2.
+        A numeric category is averaged or totalled per hex; a text category shows its most common value.
+        The file stays in your browser; nothing is uploaded.
+        <a class="tpl" href="assets/custom-data-template.csv" download>Download a template CSV</a></p>
+      <label id="customDrop" class="drop"><input type="file" id="customFile" accept=".csv,.tsv,.txt,text/csv">
+        <span>Drop a CSV here or <u>choose a file</u></span></label>
+      <details class="paste"><summary>Or paste CSV text</summary>
+        <textarea id="customPaste" rows="5" placeholder="category1,category2,lat,long&#10;Coffee,4.5,40.7128,-74.0060"></textarea>
+        <button id="customPasteGo" class="xbtn ghost">Use pasted text</button>
+      </details>
+      <div id="customStep2" hidden>
+        <p class="hint" id="cmRows"></p>
+        <div class="cm-grid">
+          <label>Latitude <select id="cmLat"></select></label>
+          <label>Longitude <select id="cmLon"></select></label>
+          <label>Category 1 <select id="cm1"></select></label>
+          <label>Category 2 (optional) <select id="cm2"></select></label>
+        </div>
+        <div class="cm-preview"><table id="cmPreview"></table></div>
+        <button id="customMap" class="xbtn">Map it</button>
+      </div>
+      <p class="cm-error" id="cmError"></p>
+    </div>
+  </div>
+
+  <div id="exportModal" hidden>
+    <div class="xmodal" role="dialog" aria-modal="true" aria-labelledby="exportHeading">
+      <header>
+        <h2 id="exportHeading">Export poster</h2>
+        <label class="xsize">Long edge
+          <select id="exportSize">
+            <option value="1600">1600 px</option>
+            <option value="2400" selected>2400 px</option>
+            <option value="3600">3600 px</option>
+          </select>
+        </label>
+        <button id="exportAll" class="xbtn">Download all</button>
+        <button id="exportClose" class="xclose" aria-label="Close">×</button>
+      </header>
+      <div id="exportGrid"></div>
+    </div>
+  </div>
+
+  <div id="loading"><div class="spinner"></div><div id="loadingText">Loading…</div></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

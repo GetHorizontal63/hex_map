@@ -1,0 +1,12 @@
+{
+  "name": "hex-map-elevation",
+  "private": true,
+  "type": "module",
+  "description": "Builds hex-ready elevation grids from USGS 3DEP (AWS Terrain Tiles)",
+  "scripts": { "build": "node build_elevation.mjs" },
+  "dependencies": {
+    "d3-geo": "3.1.1",
+    "pngjs": "7.0.0",
+    "topojson-client": "3.1.0"
+  }
+}

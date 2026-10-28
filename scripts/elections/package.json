@@ -1,0 +1,15 @@
+{
+  "name": "hex-map-elections",
+  "private": true,
+  "type": "module",
+  "description": "Builds precinct-level President, Senate and Governor results from VEST precinct shapefiles",
+  "scripts": {
+    "build": "node build_elections.mjs"
+  },
+  "dependencies": {
+    "adm-zip": "0.5.16",
+    "d3-geo": "3.1.1",
+    "proj4": "2.15.0",
+    "shapefile": "0.6.6"
+  }
+}

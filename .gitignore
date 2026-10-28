@@ -1,0 +1,5 @@
+scripts/.cache/
+serve.py
+scripts/nhgis/node_modules/
+scripts/elections/node_modules/
+scripts/elevation/node_modules/

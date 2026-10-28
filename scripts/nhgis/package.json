@@ -1,0 +1,16 @@
+{
+  "name": "hex-atlas-nhgis",
+  "private": true,
+  "type": "module",
+  "description": "Builds the 1800-2020 population density timeline from IPUMS NHGIS historical county data",
+  "scripts": {
+    "build": "node build_population.mjs"
+  },
+  "dependencies": {
+    "adm-zip": "0.5.16",
+    "d3-geo": "3.1.1",
+    "proj4": "2.15.0",
+    "shapefile": "0.6.6",
+    "topojson-client": "3.1.0"
+  }
+}
