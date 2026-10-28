@@ -281,6 +281,17 @@ To make a pair like this, export one poster, change only the measure (or switch 
 | <img src="docs/img/gallery/illinois-2016-president-4x5.jpg" alt="Illinois, 2016 presidential election"> | <img src="docs/img/gallery/south-atlantic-home-value-3x4.jpg" alt="South Atlantic, median home value, teal on navy"> |
 | **Illinois, 2016 President** · Elections · State: IL · Blue–Red · 4:5 | **South Atlantic, median home value** · Region preset: South Atlantic · Glacier, dark mode · 3:4 · *a hidden measure (see [Reference](#measures))* |
 
+### Elevation
+
+| | |
+|---|---|
+| <img src="docs/img/gallery/american-west-elevation-1x1.jpg" alt="American West, average elevation: green coast and Central Valley, tan and brown plateaus, grey and white peaks in the Sierra Nevada and Rockies"> | <img src="docs/img/gallery/american-rockies-elevation-4x5.jpg" alt="American Rockies, average elevation: tan basins and plains with grey and white ranges in Colorado, Wyoming and Utah"> |
+| **American West, elevation** · Static · several Western states, with the title typed in · dark mode · 1:1 | **American Rockies, elevation** · Static · Region preset: American Rockies · dark mode · 4:5 |
+
+Elevation uses its own fixed colour scale whatever palette is chosen: green lowlands, tan and brown uplands, grey rock, and white for the highest ground. Height is each hex's average elevation, so the Sierra Nevada and the Colorado Rockies stand out as ridges, the Central Valley sits green and flat, and the Great Basin and Colorado Plateau rise as broad tan tables in between.
+
+### More posters
+
 <img src="docs/img/gallery/appalachia-population-density-4x5.jpg" width="560" alt="Appalachia, population density, tan and teal on black">
 
 **Appalachia, population density** · Static · Region preset: Appalachia (423 ARC counties) · Earth, dark mode · 4:5
